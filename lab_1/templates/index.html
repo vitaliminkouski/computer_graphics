@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цветовые модели</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Конвертер цветовых моделей</h1>
+    </header>
+
+    <main class="container">
+        <div class="color-picker-wrapper">
+            <h3>Выбор цвета (Палитра)</h3>
+            <p>Выберите цвет с помощью стандартной палитры или посмотрите на итоговый цвет.</p>
+            <input type="color" id="html-color-picker" value="#FFFFFF">
+            <div id="color-swatch" style="background-color: rgb(255, 255, 255);"></div>
+        </div>
+
+        <div class="models-wrapper">
+            <h3>Точная настройка (Поля и ползунки) </h3>
+            <p>Изменение любого значения автоматически пересчитает все остальные.</p>
+
+            <fieldset id="model-rgb" data-model="rgb">
+                <legend>RGB (Red, Green, Blue)</legend>
+                <div class="control-group">
+                    <label for="rgb-r-slider">R</label>
+                    <input type="range" id="rgb-r-slider" class="slider" min="0" max="255" step="1" data-field="r">
+                    <input type="number" id="rgb-r-input" class="input-field" min="0" max="255" data-field="r">
+                </div>
+                <div class="control-group">
+                    <label for="rgb-g-slider">G</label>
+                    <input type="range" id="rgb-g-slider" class="slider" min="0" max="255" step="1" data-field="g">
+                    <input type="number" id="rgb-g-input" class="input-field" min="0" max="255" data-field="g">
+                </div>
+                <div class="control-group">
+                    <label for="rgb-b-slider">B</label>
+                    <input type="range" id="rgb-b-slider" class="slider" min="0" max="255" step="1" data-field="b">
+                    <input type="number" id="rgb-b-input" class="input-field" min="0" max="255" data-field="b">
+                </div>
+            </fieldset>
+
+            <fieldset id="model-cmyk" data-model="cmyk">
+                <legend>CMYK (Cyan, Magenta, Yellow, Key/Black)</legend>
+                <div class="control-group">
+                    <label for="cmyk-c-slider">C</label>
+                    <input type="range" id="cmyk-c-slider" class="slider" min="0" max="1" step="0.01" data-field="c">
+                    <input type="number" id="cmyk-c-input" class="input-field" min="0" max="1" step="0.01" data-field="c">
+                </div>
+                <div class="control-group">
+                    <label for="cmyk-m-slider">M</label>
+                    <input type="range" id="cmyk-m-slider" class="slider" min="0" max="1" step="0.01" data-field="m">
+                    <input type="number" id="cmyk-m-input" class="input-field" min="0" max="1" step="0.01" data-field="m">
+                </div>
+                <div class="control-group">
+                    <label for="cmyk-y-slider">Y</label>
+                    <input type="range" id="cmyk-y-slider" class="slider" min="0" max="1" step="0.01" data-field="y">
+                    <input type="number" id="cmyk-y-input" class="input-field" min="0" max="1" step="0.01" data-field="y">
+                </div>
+                <div class="control-group">
+                    <label for="cmyk-k-slider">K</label>
+                    <input type="range" id="cmyk-k-slider" class="slider" min="0" max="1" step="0.01" data-field="k">
+                    <input type="number" id="cmyk-k-input" class="input-field" min="0" max="1" step="0.01" data-field="k">
+                </div>
+            </fieldset>
+
+            <fieldset id="model-hls" data-model="hls">
+                <legend>HLS (Hue, Lightness, Saturation)</legend>
+                <div class="control-group">
+                    <label for="hls-h-slider">H</label>
+                    <input type="range" id="hls-h-slider" class="slider" min="0" max="360" step="1" data-field="h">
+                    <input type="number" id="hls-h-input" class="input-field" min="0" max="360" data-field="h">
+                </div>
+                <div class="control-group">
+                    <label for="hls-l-slider">L</label>
+                    <input type="range" id="hls-l-slider" class="slider" min="0" max="1" step="0.01" data-field="l">
+                    <input type="number" id="hls-l-input" class="input-field" min="0" max="1" step="0.01" data-field="l">
+                </div>
+                <div class="control-group">
+                    <label for="hls-s-slider">S</label>
+                    <input type="range" id="hls-s-slider" class="slider" min="0" max="1" step="0.01" data-field="s">
+                    <input type="number" id="hls-s-input" class="input-field" min="0" max="1" step="0.01" data-field="s">
+                </div>
+            </fieldset>
+
+        </div>
+    </main>
+
+    <script>
+        const initialData = {{ initial_data | tojson }};
+    </script>
+    <script src="/static/script.js"></script>
+
+</body>
+</html>
