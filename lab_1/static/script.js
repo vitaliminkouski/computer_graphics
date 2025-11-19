@@ -3,10 +3,8 @@ let isUpdating = false;
 
 // Помощники для обновления UI
 
-/**
- * Обновляет все поля ввода, ползунки и палитры на основе данных с сервера
- * @param {object} data - Объект {rgb, cmyk, hls}
- */
+ //Обновляет все поля ввода, ползунки и палитры на основе данных с сервера
+
 function updateUI(data) {
     isUpdating = true; // Ставим флаг, что мы обновляем UI
 
@@ -49,11 +47,8 @@ function updateUI(data) {
 
 // Функция вызова API (FastAPI Backend)
 
-/**
- * Собирает данные из измененной модели и отправляет на сервер
- * @param {string} modelName - 'rgb', 'cmyk', 'hls'
- * @param {HTMLElement} fieldset - Элемент <fieldset>, вызвавший событие
- */
+
+ // Собирает данные из измененной модели и отправляет на сервер
 async function sendUpdate(modelName, fieldset) {
     if (isUpdating) return; // Не делаем ничего, если UI сейчас обновляется
 

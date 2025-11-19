@@ -4,10 +4,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
-from typing import Tuple, Dict, Any
 
 
-
+# Модели данных
 
 class RGBColor(BaseModel):
     r: int = Field(..., ge=0, le=255)
@@ -24,8 +23,8 @@ class CMYKColor(BaseModel):
 
 class HLSColor(BaseModel):
     h: int = Field(..., ge=0, le=360)
-    l: float = Field(..., ge=0, le=1)  # Lightness
-    s: float = Field(..., ge=0, le=1)  # Saturation
+    l: float = Field(..., ge=0, le=1)
+    s: float = Field(..., ge=0, le=1)
 
 
 class AllColorModels(BaseModel):
@@ -34,9 +33,7 @@ class AllColorModels(BaseModel):
     hls: HLSColor
 
 
-# Логика конвертации
 
-# CMYK <-> RGB
 def rgb_to_cmyk(r: int, g: int, b: int) -> CMYKColor:
     if r == 0 and g == 0 and b == 0:
         return CMYKColor(c=0, m=0, y=0, k=1)
@@ -45,15 +42,18 @@ def rgb_to_cmyk(r: int, g: int, b: int) -> CMYKColor:
     g_p = g / 255.0
     b_p = b / 255.0
 
+    # Вычисляем K (Black Key)
     k = 1 - max(r_p, g_p, b_p)
+
     if k == 1:
         return CMYKColor(c=0, m=0, y=0, k=1)
 
+    # Вычисляем C, M, Y по стандартной формуле
     c = (1 - r_p - k) / (1 - k)
     m = (1 - g_p - k) / (1 - k)
     y = (1 - b_p - k) / (1 - k)
 
-    return CMYKColor(c=round(c, 4), m=round(m, 4), y=round(y, 4), k=round(k, 4))
+    return CMYKColor(c=round(c, 5), m=round(m, 5), y=round(y, 5), k=round(k, 5))
 
 
 def cmyk_to_rgb(c: float, m: float, y: float, k: float) -> RGBColor:
@@ -63,7 +63,6 @@ def cmyk_to_rgb(c: float, m: float, y: float, k: float) -> RGBColor:
     return RGBColor(r=int(round(r)), g=int(round(g)), b=int(round(b)))
 
 
-# RGB <-> HLS
 def rgb_to_hls(r: int, g: int, b: int) -> HLSColor:
     r_p = r / 255.0
     g_p = g / 255.0
@@ -81,71 +80,66 @@ def rgb_to_hls(r: int, g: int, b: int) -> HLSColor:
 
     if delta == 0:
         h = 0
-        s = 0
+        s = 0  # Серый цвет, насыщенность 0
     else:
-        # Saturation (S)
-        s = delta / (1 - abs(2 * l - 1))
+        # Saturation (S) - формула зависит от яркости L
+        if l < 0.5:
+            s = delta / (max_val + min_val)
+        else:
+            s = delta / (2.0 - max_val - min_val)
 
         # Hue (H)
         if max_val == r_p:
-            h = 60 * (((g_p - b_p) / delta) % 6)
+            h = (g_p - b_p) / delta
         elif max_val == g_p:
-            h = 60 * ((b_p - r_p) / delta + 2)
+            h = 2.0 + (b_p - r_p) / delta
         elif max_val == b_p:
-            h = 60 * ((r_p - g_p) / delta + 4)
+            h = 4.0 + (r_p - g_p) / delta
 
+        h *= 60
         if h < 0:
             h += 360
 
-    return HLSColor(h=int(round(h)), l=round(l, 4), s=round(s, 4))
+    return HLSColor(h=int(round(h)), l=round(l, 5), s=round(s, 5))
 
 
 def hls_to_rgb(h: int, l: float, s: float) -> RGBColor:
     if s == 0:
-        r = g = b = l * 255
-        return RGBColor(r=int(round(r)), g=int(round(g)), b=int(round(b)))
+        # Серый цвет
+        val = int(round(l * 255))
+        return RGBColor(r=val, g=val, b=val)
 
-    c = (1 - abs(2 * l - 1)) * s
-    x = c * (1 - abs(((h / 60) % 2) - 1))
-    m = l - c / 2
+    def hue_to_rgb(p, q, t):
+        if t < 0: t += 1
+        if t > 1: t -= 1
+        if t < 1 / 6: return p + (q - p) * 6 * t
+        if t < 1 / 2: return q
+        if t < 2 / 3: return p + (q - p) * (2 / 3 - t) * 6
+        return p
 
-    r_p, g_p, b_p = 0, 0, 0
+    q = l * (1 + s) if l < 0.5 else l + s - l * s
+    p = 2 * l - q
 
-    if 0 <= h < 60:
-        r_p, g_p, b_p = c, x, 0
-    elif 60 <= h < 120:
-        r_p, g_p, b_p = x, c, 0
-    elif 120 <= h < 180:
-        r_p, g_p, b_p = 0, c, x
-    elif 180 <= h < 240:
-        r_p, g_p, b_p = 0, x, c
-    elif 240 <= h < 300:
-        r_p, g_p, b_p = x, 0, c
-    elif 300 <= h <= 360:
-        r_p, g_p, b_p = c, 0, x
+    h_norm = h / 360.0
 
-    r = (r_p + m) * 255
-    g = (g_p + m) * 255
-    b = (b_p + m) * 255
+    r = hue_to_rgb(p, q, h_norm + 1 / 3)
+    g = hue_to_rgb(p, q, h_norm)
+    b = hue_to_rgb(p, q, h_norm - 1 / 3)
 
-    return RGBColor(r=int(round(r)), g=int(round(g)), b=int(round(b)))
+    return RGBColor(r=int(round(r * 255)), g=int(round(g * 255)), b=int(round(b * 255)))
 
 
+# Приложение FastAPI
 
-
-app = FastAPI(title="Lab 1: Color Models (HLS Variant)")
-
+app = FastAPI(title="Lab 1: Color Models (Corrected Math)")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-
 @app.get("/", response_class=HTMLResponse)
 async def get_main_page(request: Request):
-    """Отдает главную HTML страницу"""
-    # Начальный цвет (белый)
-    initial_rgb = RGBColor(r=255, g=255, b=255)
+    initial_rgb = RGBColor(r=118, g=84, b=32)  # Ваш тестовый цвет
     initial_cmyk = rgb_to_cmyk(initial_rgb.r, initial_rgb.g, initial_rgb.b)
     initial_hls = rgb_to_hls(initial_rgb.r, initial_rgb.g, initial_rgb.b)
 
@@ -159,11 +153,6 @@ async def get_main_page(request: Request):
 
 @app.post("/convert", response_model=AllColorModels)
 async def convert_color(source_model: str = Form(...), values: str = Form(...)):
-    """
-    Принимает цвет в одной модели и возвращает его во всех трех.
-    Это ядро "автоматического пересчета" [cite: 10, 14]
-    """
-
     import json
     v = json.loads(values)
 
@@ -190,8 +179,8 @@ async def convert_color(source_model: str = Form(...), values: str = Form(...)):
         return AllColorModels(rgb=rgb, cmyk=cmyk, hls=hls)
 
     except Exception as e:
-        print(f"Error converting color: {e}")
-        return JSONResponse(status_code=400, content={"message": "Invalid color values"})
+        print(f"Error: {e}")
+        return JSONResponse(status_code=400, content={"message": "Error"})
 
 
 if __name__ == "__main__":
