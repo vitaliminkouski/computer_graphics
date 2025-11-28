@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лаб 4</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; display: flex; gap: 20px; }
+        .controls { width: 300px; }
+        textarea { width: 100%; height: 200px; font-family: monospace; }
+        canvas { border: 1px solid #ccc; background: #f9f9f9; }
+        button { padding: 10px; width: 100%; margin-top: 10px; cursor: pointer; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        .legend { margin-top: 20px; padding: 10px; border: 1px solid #eee; }
+        .color-box { display: inline-block; width: 15px; height: 15px; margin-right: 5px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h2>Ввод данных</h2>
+    <label>Режим:</label>
+    <select id="mode">
+        <option value="lines">Часть 1: Отрезки (Средняя точка)</option>
+        <option value="polygon">Часть 2: Полигон (Сазерленд-Ходжман)</option>
+    </select>
+
+    <label>Входной файл:</label>
+    <textarea id="inputData">3
+10 10 200 200
+50 250 250 50
+-20 100 300 100
+0 0 200 200</textarea>
+    <small>Формат:<br>N (число отрезков)<br>x1 y1 x2 y2<br>...<br>xmin ymin xmax ymax</small>
+
+    <button onclick="process()">Выполнить отсечение</button>
+
+    <div class="legend">
+        <div><span class="color-box" style="background: blue;"></span>Окно</div>
+        <div><span class="color-box" style="background: red;"></span>Исходные</div>
+        <div><span class="color-box" style="background: #00ff00; border:1px solid gray;"></span>Результат (Видимое)</div>
+    </div>
+</div>
+
+<canvas id="canvas" width="600" height="600"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Функция преобразования координат для отображения (центр экрана, масштаб)
+    // Простое масштабирование под canvas
+    function mapCoord(val, offset, scale) {
+        return (val * scale) + offset;
+    }
+
+    // Переворачиваем Y, так как в canvas Y растет вниз
+    function mapY(val, offset, scale) {
+        return height - ((val * scale) + offset);
+    }
+
+    async function process() {
+        const rawData = document.getElementById('inputData').value;
+        const mode = document.getElementById('mode').value;
+
+        const formData = new FormData();
+        formData.append('raw_data', rawData);
+        formData.append('mode', mode);
+
+        const response = await fetch('/process', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (data.error) {
+            alert("Ошибка: " + data.error);
+            return;
+        }
+
+        draw(data);
+    }
+
+    function draw(data) {
+        ctx.clearRect(0, 0, width, height);
+
+        // Автоматический масштаб
+        // Найдем границы всего: окна и линий
+        let allX = [data.window.xmin, data.window.xmax];
+        let allY = [data.window.ymin, data.window.ymax];
+
+        data.original_lines.forEach(line => {
+            allX.push(line[0].x, line[1].x);
+            allY.push(line[0].y, line[1].y);
+        });
+
+        const minX = Math.min(...allX);
+        const maxX = Math.max(...allX);
+        const minY = Math.min(...allY);
+        const maxY = Math.max(...allY);
+
+        const padding = 40;
+        const scaleX = (width - padding * 2) / (maxX - minX || 1);
+        const scaleY = (height - padding * 2) / (maxY - minY || 1);
+        const scale = Math.min(scaleX, scaleY); // Сохраняем пропорции
+
+        // Смещение, чтобы центрировать фигуру
+        const offsetX = padding - minX * scale;
+        const offsetY = padding - minY * scale; // Для Y смещение считается иначе при инверсии, но для простоты пересчитаем:
+
+        // Переопределим трансформ функцию для конкретного случая
+        const tx = (x) => (x - minX) * scale + padding;
+        const ty = (y) => height - ((y - minY) * scale + padding);
+
+        // 1. Рисуем сетку / оси (опционально)
+        ctx.strokeStyle = '#eee';
+        ctx.beginPath();
+        // Ось X (y=0)
+        if (minY <= 0 && maxY >= 0) {
+            ctx.moveTo(0, ty(0)); ctx.lineTo(width, ty(0));
+        }
+        // Ось Y (x=0)
+        if (minX <= 0 && maxX >= 0) {
+            ctx.moveTo(tx(0), 0); ctx.lineTo(tx(0), height);
+        }
+        ctx.stroke();
+
+        // 2. Рисуем отсекающее окно (Синий)
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(
+            tx(data.window.xmin),
+            ty(data.window.ymax), // В canvas rect рисуется от top-left
+            (data.window.xmax - data.window.xmin) * scale,
+            (data.window.ymax - data.window.ymin) * scale
+        );
+        ctx.stroke();
+
+        // 3. Рисуем исходные данные (Красный)
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        data.original_lines.forEach(line => {
+            ctx.moveTo(tx(line[0].x), ty(line[0].y));
+            ctx.lineTo(tx(line[1].x), ty(line[1].y));
+        });
+        ctx.stroke();
+
+        // 4. Рисуем результат (Зеленый / Жирный)
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 3;
+
+        if (data.mode === 'lines') {
+            ctx.beginPath();
+            data.result.forEach(line => {
+                ctx.moveTo(tx(line[0].x), ty(line[0].y));
+                ctx.lineTo(tx(line[1].x), ty(line[1].y));
+            });
+            ctx.stroke();
+        } else if (data.mode === 'polygon') {
+            data.result.forEach(poly => {
+                if(poly.length === 0) return;
+                ctx.beginPath();
+                ctx.moveTo(tx(poly[0].x), ty(poly[0].y));
+                for(let i=1; i<poly.length; i++) {
+                    ctx.lineTo(tx(poly[i].x), ty(poly[i].y));
+                }
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лаб 2</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .img-container {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 200px;
+            background-color: #f0f0f0;
+            object-fit: contain;
+        }
+        .controls-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        label { font-weight: bold; font-size: 0.9rem; }
+        .val-display { float: right; color: #0d6efd; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+
+        <div class="row">
+            <!-- Левая колонка: Настройки -->
+            <div class="col-md-4">
+                <div class="controls-box">
+                    <!-- Загрузка файла -->
+                    <div class="mb-4 border-bottom pb-3">
+                        <label class="form-label">1. Загрузите изображение</label>
+                        <input class="form-control" type="file" id="fileInput" accept="image/*">
+                    </div>
+
+                    <!-- Выбор метода -->
+                    <div class="mb-3">
+                        <label class="form-label">2. Метод обработки</label>
+                        <select class="form-select" id="methodSelect">
+                            <option value="adaptive_gaussian">Локальный порог (Adaptive Gaussian)</option>
+                            <option value="adaptive_mean">Локальный порог (Adaptive Mean)</option>
+                            <option value="median">Медианный фильтр (Шумоподавление)</option>
+                        </select>
+                    </div>
+
+                    <!-- ПАРАМЕТРЫ -->
+                    <div id="dynamicParams">
+                        <!-- Параметры для пороговой обработки -->
+                        <div id="threshParams">
+                            <label class="form-label">Размер блока <span id="val_block" class="val-display">41</span></label>
+                            <input type="range" class="form-range param-input" id="blockSize" min="3" max="255" step="2" value="41">
+                            <div class="form-text small mb-2">Размер области анализа (нечетное число).</div>
+
+                            <label class="form-label">Константа C <span id="val_c" class="val-display">5</span></label>
+                            <input type="range" class="form-range param-input" id="cVal" min="0" max="50" step="1" value="5">
+                            <div class="form-text small">Поправка порога (меньше = больше шума).</div>
+                        </div>
+
+                        <!-- Параметры для медианного фильтра -->
+                        <div id="medianParams" class="d-none">
+                            <label class="form-label">Размер ядра <span id="val_kernel" class="val-display">5</span></label>
+                            <input type="range" class="form-range param-input" id="kernelSize" min="3" max="21" step="2" value="5">
+                            <div class="form-text small">Сила размытия.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка: Изображения -->
+            <div class="col-md-8">
+                <div class="row">
+                    <div class="col-6 text-center">
+                        <h6>Исходное</h6>
+                        <img id="originalImg" src="" class="img-container">
+                    </div>
+                    <div class="col-6 text-center">
+                        <h6>Результат</h6>
+                        <img id="processedImg" src="" class="img-container">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Элементы DOM
+        const fileInput = document.getElementById('fileInput');
+        const methodSelect = document.getElementById('methodSelect');
+        const originalImg = document.getElementById('originalImg');
+        const processedImg = document.getElementById('processedImg');
+
+        // Инпуты параметров
+        const blockSizeInput = document.getElementById('blockSize');
+        const cValInput = document.getElementById('cVal');
+        const kernelSizeInput = document.getElementById('kernelSize');
+
+        // Дисплеи значений
+        const valBlock = document.getElementById('val_block');
+        const valC = document.getElementById('val_c');
+        const valKernel = document.getElementById('val_kernel');
+
+        // Блоки с параметрами
+        const threshParams = document.getElementById('threshParams');
+        const medianParams = document.getElementById('medianParams');
+
+        let isImageLoaded = false;
+
+        // 1. Обработка загрузки файла
+        fileInput.addEventListener('change', async () => {
+            if (fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                originalImg.src = data.image;
+                processedImg.src = data.image; // Сначала показываем оригинал
+                isImageLoaded = true;
+
+                // Сразу запускаем обработку с текущими параметрами
+                updateProcessing();
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                alert('Ошибка при загрузке изображения');
+            }
+        });
+
+        // 2. Логика переключения интерфейса (Показать/Скрыть параметры)
+        methodSelect.addEventListener('change', () => {
+            const method = methodSelect.value;
+            if (method === 'median') {
+                threshParams.classList.add('d-none');
+                medianParams.classList.remove('d-none');
+            } else {
+                threshParams.classList.remove('d-none');
+                medianParams.classList.add('d-none');
+            }
+            updateProcessing();
+        });
+
+        // 3. Функция отправки запроса на обработку
+        async function updateProcessing() {
+            if (!isImageLoaded) return;
+
+            // Обновляем циферки рядом с ползунками
+            valBlock.textContent = blockSizeInput.value;
+            valC.textContent = cValInput.value;
+            valKernel.textContent = kernelSizeInput.value;
+
+            const formData = new FormData();
+            formData.append('method', methodSelect.value);
+            formData.append('block_size', blockSizeInput.value);
+            formData.append('c_val', cValInput.value);
+            formData.append('kernel_size', kernelSizeInput.value);
+
+            try {
+                const response = await fetch('/api/process', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.processed_image) {
+                    processedImg.src = data.processed_image;
+                }
+            } catch (error) {
+                console.error('Ошибка обработки:', error);
+            }
+        }
+
+        // 4. Вешаем события на все ползунки (input срабатывает при перетаскивании)
+        [blockSizeInput, cValInput, kernelSizeInput].forEach(input => {
+            input.addEventListener('input', updateProcessing);
+        });
+
+    </script>
+</body>
+</html>
