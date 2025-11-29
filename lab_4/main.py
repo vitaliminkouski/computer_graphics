@@ -30,7 +30,7 @@ class Rect(BaseModel):
 # --- Вспомогательные функции ---
 
 def get_region_code(p: Point, win: Rect) -> int:
-    """Вычисление кода области (как в Коэне-Сазерленде) для помощи в алгоритме средней точки"""
+    """Вычисление кода области  для помощи в алгоритме средней точки"""
     code = 0
     if p.x < win.xmin: code |= 1  # Left
     if p.x > win.xmax: code |= 2  # Right
@@ -40,7 +40,6 @@ def get_region_code(p: Point, win: Rect) -> int:
 
 
 # --- 1. Алгоритм средней точки (Midpoint Subdivision) ---
-# Вариант 15, Часть 1
 
 def midpoint_clip_line(p1: Point, p2: Point, win: Rect, precision=0.1) -> Optional[Segment]:
     code1 = get_region_code(p1, win)
@@ -64,11 +63,9 @@ def midpoint_clip_line(p1: Point, p2: Point, win: Rect, precision=0.1) -> Option
     mid = Point(x=(p1.x + p2.x) / 2, y=(p1.y + p2.y) / 2)
 
     # Рекурсивно обрабатываем две половинки
-    # Примечание: Это упрощенная реализация. В полной версии обычно ищут именно пересечение.
-    # Для визуализации "отсечения" нам нужно найти именно те части, что внутри.
 
-    # Оптимизированный подход средней точки ищет точку пересечения с краем.
-    # Но классический рекурсивный метод:
+
+
     seg1 = midpoint_clip_line(p1, mid, win, precision)
     seg2 = midpoint_clip_line(mid, p2, win, precision)
 
@@ -84,7 +81,6 @@ def midpoint_clip_line(p1: Point, p2: Point, win: Rect, precision=0.1) -> Option
 
 
 # --- 2. Алгоритм Сазерленда-Ходжмана (Отсечение выпуклого многоугольника) ---
-# Вариант 15, Часть 2
 
 def clip_polygon(subject_polygon: List[Point], win: Rect) -> List[Point]:
     """
@@ -159,8 +155,6 @@ def clip_polygon(subject_polygon: List[Point], win: Rect) -> List[Point]:
 
 @app.get("/", response_class=HTMLResponse)
 async def read_item(request: Request):
-    # Создаем базовый HTML прямо здесь, если не хочется создавать папку templates
-    # Но для чистоты используем Jinja2 (см. ниже раздел про HTML)
     return templates.TemplateResponse("index.html", {"request": request})
 
 
@@ -202,7 +196,7 @@ async def process_data(
                         {"x": clipped.p2.x, "y": clipped.p2.y}
                     ])
         else:
-            # Вариант 15 Ч.2: Отсечение полигона
+            # Отсечение полигона
             # Собираем точки из сегментов в один список вершин
             # Предполагаем, что входные сегменты идут последовательно и образуют замкнутый контур
             poly_points = []

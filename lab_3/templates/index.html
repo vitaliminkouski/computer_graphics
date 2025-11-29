@@ -3,23 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лаб 3</title>
+    <title>Лабораторная 3: Базовые алгоритмы</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background-color: #f4f4f9; }
-        #sidebar { width: 300px; padding: 20px; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow-y: auto; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background-color: #f4f4f9; }
+        #sidebar { width: 320px; padding: 20px; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow-y: auto; }
         #main { flex-grow: 1; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; background-color: #e0e0e0; }
-        canvas { background: white; box-shadow: 0 0 10px rgba(0,0,0,0.2); cursor: crosshair; }
+        canvas { background: white; box-shadow: 0 0 10px rgba(0,0,0,0.2); }
 
-        h2 { color: #333; font-size: 1.2rem; }
+        h2 { color: #333; margin-top: 0; }
         .control-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
         input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: background 0.3s; }
-        button:hover { background-color: #45a049; }
+        .coord-row { display: flex; gap: 5px; }
 
-        .result-box { margin-top: 20px; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 4px; }
-        .info-text { font-size: 0.8rem; color: #666; margin-top: 10px; line-height: 1.4; }
+        button { width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-bottom: 5px; }
+        button.clear { background-color: #f44336; }
+        button:hover { opacity: 0.9; }
 
+        .result-box { margin-top: 20px; padding: 10px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 4px; font-size: 0.9rem; }
         .hidden { display: none; }
     </style>
 </head>
@@ -29,63 +30,60 @@
     <h2>Настройки</h2>
 
     <div class="control-group">
-        <label for="algorithm">Алгоритм:</label>
+        <label>Алгоритм:</label>
         <select id="algorithm" onchange="toggleInputs()">
             <option value="step">Пошаговый алгоритм</option>
             <option value="dda">Алгоритм ЦДА</option>
             <option value="bresenham_line">Брезенхем (Линия)</option>
             <option value="bresenham_circle">Брезенхем (Окружность)</option>
+            <option value="castle_pitteway">Алгоритм Кастла-Питвея</option>
+            <option value="wu">Алгоритм Ву (Сглаживание)</option>
         </select>
     </div>
 
+    <!-- Координаты для линий -->
     <div id="line-inputs">
         <div class="control-group">
             <label>Начало (X1, Y1):</label>
-            <div style="display: flex; gap: 5px;">
-                <input type="number" id="x1" value="-5" placeholder="X1">
-                <input type="number" id="y1" value="-5" placeholder="Y1">
+            <div class="coord-row">
+                <input type="number" id="x1" value="-10">
+                <input type="number" id="y1" value="-10">
             </div>
         </div>
         <div class="control-group">
             <label>Конец (X2, Y2):</label>
-            <div style="display: flex; gap: 5px;">
-                <input type="number" id="x2" value="10" placeholder="X2">
-                <input type="number" id="y2" value="8" placeholder="Y2">
+            <div class="coord-row">
+                <input type="number" id="x2" value="10">
+                <input type="number" id="y2" value="5">
             </div>
         </div>
     </div>
 
+    <!-- Для окружности -->
     <div id="circle-inputs" class="hidden">
         <div class="control-group">
             <label>Центр (X1, Y1):</label>
-            <div style="display: flex; gap: 5px;">
-                <input type="number" id="cx" value="0" placeholder="X">
-                <input type="number" id="cy" value="0" placeholder="Y">
+            <div class="coord-row">
+                <input type="number" id="c_x" value="0">
+                <input type="number" id="c_y" value="0">
             </div>
         </div>
         <div class="control-group">
             <label>Радиус (R):</label>
-            <input type="number" id="radius" value="10" min="1">
+            <input type="number" id="radius" value="15">
         </div>
     </div>
 
     <div class="control-group">
-        <label for="scale">Масштаб (пикс/ед): <span id="scaleVal">20</span></label>
+        <label>Масштаб: <span id="scaleVal">20</span></label>
         <input type="range" id="scale" min="5" max="50" value="20" oninput="updateScale(this.value)">
     </div>
 
     <button onclick="runAlgorithm()">Построить</button>
-    <button onclick="clearCanvas()" style="background-color: #f44336; margin-top: 10px;">Очистить</button>
+    <button class="clear" onclick="clearCanvas()">Очистить</button>
 
     <div class="result-box" id="result">
-        Время выполнения: -
-    </div>
-
-    <div class="info-text">
-        <strong>О системе координат:</strong><br>
-        Центр холста соответствует точке (0,0).<br>
-        Ось Y направлена вверх (как в математике).<br>
-        Координаты привязаны к сетке через округление до ближайшей ячейки.
+        Время: - <br> Точек: -
     </div>
 </div>
 
@@ -96,24 +94,17 @@
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    let scale = 20; // Размер одной клетки в пикселях
+    let scale = 20;
     let width, height, originX, originY;
 
-    // Инициализация Canvas
     function resizeCanvas() {
         const main = document.getElementById('main');
         canvas.width = main.clientWidth;
         canvas.height = main.clientHeight;
         width = canvas.width;
         height = canvas.height;
-        // Центр координат в середине экрана
-        originX = Math.floor(width / 2);
-        originY = Math.floor(height / 2);
-
-        // Выравнивание по сетке
-        originX = Math.round(originX / scale) * scale;
-        originY = Math.round(originY / scale) * scale;
-
+        originX = Math.round((width / 2) / scale) * scale;
+        originY = Math.round((height / 2) / scale) * scale;
         drawGrid();
     }
 
@@ -127,87 +118,59 @@
 
     function toggleInputs() {
         const algo = document.getElementById('algorithm').value;
+        const lineInputs = document.getElementById('line-inputs');
+        const circleInputs = document.getElementById('circle-inputs');
+
+        lineInputs.classList.add('hidden');
+        circleInputs.classList.add('hidden');
+
         if (algo === 'bresenham_circle') {
-            document.getElementById('line-inputs').classList.add('hidden');
-            document.getElementById('circle-inputs').classList.remove('hidden');
+            circleInputs.classList.remove('hidden');
         } else {
-            document.getElementById('line-inputs').classList.remove('hidden');
-            document.getElementById('circle-inputs').classList.add('hidden');
+            lineInputs.classList.remove('hidden');
         }
     }
 
-    // --- Рисование сетки и осей ---
     function drawGrid() {
         ctx.clearRect(0, 0, width, height);
-
         ctx.beginPath();
         ctx.strokeStyle = '#e0e0e0';
         ctx.lineWidth = 1;
 
-        // Вертикальные линии
         for (let x = originX % scale; x < width; x += scale) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, height);
+            ctx.moveTo(x, 0); ctx.lineTo(x, height);
         }
-        // Горизонтальные линии
         for (let y = originY % scale; y < height; y += scale) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(width, y);
+            ctx.moveTo(0, y); ctx.lineTo(width, y);
         }
         ctx.stroke();
 
-        // Оси
         ctx.beginPath();
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 2;
-
-        // Ось X
-        ctx.moveTo(0, originY);
-        ctx.lineTo(width, originY);
-
-        // Ось Y
-        ctx.moveTo(originX, 0);
-        ctx.lineTo(originX, height);
+        ctx.moveTo(0, originY); ctx.lineTo(width, originY);
+        ctx.moveTo(originX, 0); ctx.lineTo(originX, height);
         ctx.stroke();
-
-        // Подписи осей
-        ctx.fillStyle = '#333';
-        ctx.font = '12px Arial';
-        ctx.fillText("0", originX + 2, originY - 2);
-        ctx.fillText("X", width - 15, originY - 5);
-        ctx.fillText("Y", originX + 5, 15);
-
-        // Риски на осях (каждые 5 единиц)
-        /* Опционально можно добавить цифры, но сетки обычно достаточно */
     }
 
-    // --- Рисование пикселя ---
-    function drawPixel(logicX, logicY, color = 'blue') {
-        // Преобразование:
-        // Экранный X = ЦентрX + (ЛогическийX * Масштаб)
-        // Экранный Y = ЦентрY - (ЛогическийY * Масштаб)  <-- Минус, т.к. в Canvas Y растет вниз
-
+    function drawPixel(logicX, logicY, alpha = 1.0, colorBase = '33, 150, 243') {
         const screenX = originX + (logicX * scale);
-        const screenY = originY - (logicY * scale) - scale; // Сдвиг на scale, т.к. rect рисуется от левого верхнего угла
+        const screenY = originY - (logicY * scale) - scale;
 
-        ctx.fillStyle = color;
-        // Рисуем квадрат чуть меньше клетки, чтобы видно было сетку
+        ctx.fillStyle = `rgba(${colorBase}, ${alpha})`;
         ctx.fillRect(screenX + 1, screenY + 1, scale - 2, scale - 2);
     }
 
-    function clearCanvas() {
-        drawGrid();
-        document.getElementById('result').innerText = "Время выполнения: -";
-    }
-
-    // --- Отправка данных на сервер ---
     async function runAlgorithm() {
         const algo = document.getElementById('algorithm').value;
-        let payload = { algorithm: algo, x1: 0, y1: 0, x2: 0, y2: 0, radius: 0 };
+        let payload = {
+            algorithm: algo, x1: 0, y1: 0, x2: 0, y2: 0,
+            radius: 0
+        };
 
         if (algo === 'bresenham_circle') {
-            payload.x1 = parseInt(document.getElementById('cx').value);
-            payload.y1 = parseInt(document.getElementById('cy').value);
+            payload.x1 = parseInt(document.getElementById('c_x').value);
+            payload.y1 = parseInt(document.getElementById('c_y').value);
             payload.radius = parseInt(document.getElementById('radius').value);
         } else {
             payload.x1 = parseInt(document.getElementById('x1').value);
@@ -222,41 +185,38 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-
             const data = await response.json();
 
-            // Отрисовка
-            clearCanvas(); // Стираем старое
+            clearCanvas();
 
-            // Рисуем точки, полученные с сервера
-            data.points.forEach(p => drawPixel(p[0], p[1], '#2196F3'));
+            // Рисуем точки
+            data.points.forEach(p => {
+                drawPixel(p[0], p[1], p[2]);
+            });
 
-            // Подсвечиваем начальные точки красным
-            drawPixel(payload.x1, payload.y1, 'red');
+            // Маркеры начала и конца
+            drawPixel(payload.x1, payload.y1, 1.0, '244, 67, 54');
             if (algo !== 'bresenham_circle') {
-                drawPixel(payload.x2, payload.y2, 'red');
+                drawPixel(payload.x2, payload.y2, 1.0, '244, 67, 54');
             }
 
-            // Вывод времени
-            // Конвертируем наносекунды в микросекунды или миллисекунды для удобства
-            let timeStr = "";
-            if (data.execution_time_ns < 1000) {
-                timeStr = data.execution_time_ns + " нс";
-            } else if (data.execution_time_ns < 1000000) {
-                timeStr = (data.execution_time_ns / 1000).toFixed(2) + " мкс";
-            } else {
-                timeStr = (data.execution_time_ns / 1000000).toFixed(4) + " мс";
-            }
+            let timeStr = data.execution_time_ns < 1000 ? data.execution_time_ns + " нс" :
+                          data.execution_time_ns < 1000000 ? (data.execution_time_ns/1000).toFixed(2) + " мкс" :
+                          (data.execution_time_ns/1000000).toFixed(4) + " мс";
 
-            document.getElementById('result').innerText = `Время (Backend): ${timeStr}\nКол-во точек: ${data.points.length}`;
+            document.getElementById('result').innerHTML = `Время (Backend): <b>${timeStr}</b><br>Точек: ${data.points.length}`;
 
         } catch (e) {
             console.error(e);
-            alert("Ошибка при расчете. Проверьте консоль.");
+            alert("Ошибка расчета");
         }
     }
 
-    // Инициализация при загрузке
+    function clearCanvas() {
+        drawGrid();
+        document.getElementById('result').innerHTML = "Время: - <br> Точек: -";
+    }
+
     resizeCanvas();
     toggleInputs();
 </script>

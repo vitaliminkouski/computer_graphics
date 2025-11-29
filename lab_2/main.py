@@ -9,9 +9,7 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Глобальная переменная для хранения последнего загруженного изображения в памяти
-# (В реальном продакшене так делать нельзя, но для лабы это упрощает жизнь -
-# не нужно гонять файл туда-сюда при каждом движении ползунка)
+
 last_uploaded_image = None
 
 
@@ -56,7 +54,7 @@ async def api_process_image(
     original_img = last_uploaded_image.copy()
     processed_img = None
 
-    # --- ЛОГИКА ОБРАБОТКИ (ВАРИАНТ 15) ---
+    # --- ЛОГИКА ОБРАБОТКИ ---
 
     if method == "median":
         # Ядро должно быть нечетным
